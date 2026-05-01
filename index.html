@@ -64,8 +64,9 @@
         .stat-loss { font-size: 14px; font-weight: 900; color: var(--p); }
         .period-label { font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase; } 
 
-        .video-section { width: 100%; margin-top: 25px; border-radius: 20px; overflow: hidden; border: 1px solid #333; background: #000; }
-        .video-section iframe { width: 100%; height: 200px; display: block; border: none; }
+        /* NOVOS ESTILOS TENTATIVAS */
+        .tentativas-badge { background: #222; padding: 6px 15px; border-radius: 50px; font-size: 11px; font-weight: 900; color: #fff; border: 1px solid #333; margin-top: 5px; display: inline-block; }
+        .instrucoes { font-size: 10px; color: #666; margin-top: 8px; line-height: 1.4; padding: 0 15px; }
     </style>
 </head>
 <body> 
@@ -107,15 +108,18 @@
                 <div class="signal-display">
                     <div id="inner-loader">
                         <div class="radiant-circle"></div>
-                        <span class="proc-text">ANALISANDO...</span>
+                        <span class="proc-text" id="loader-msg">ANALISANDO...</span>
                     </div>
-                    <div id="signal-data" style="display: none;">
+                    <div id="signal-data">
                         <span style="font-size:12px; font-weight:900; opacity:0.7">SAIR EM (CASH OUT)</span>
                         <span class="val" id="mult">--.--X</span>
                         <span id="time" style="font-weight:700">ENTRADA: --:--</span>
                     </div>
                 </div>
             </div> 
+
+            <div class="tentativas-badge">3 TENTATIVAS</div>
+            <p class="instrucoes">Se uma das 3 tentativas ganhar a rodada é considerado vencido.</p>
 
             <button class="btn-affiliate" id="btn-bet" onclick="irParaBanca()">APOSTAR AGORA 🚀</button> 
 
@@ -138,10 +142,6 @@
                     <tr><td class="period-label">Mensal</td><td class="stat-win" id="win-month">+0</td><td class="stat-loss" id="loss-month">-0</td></tr>
                 </table>
             </div>
-
-            <div class="video-section">
-                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Tutorial" allowfullscreen></iframe>
-            </div>
         </div>
     </div> 
 
@@ -151,11 +151,8 @@
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyA3_1btxboCFxCcCJ4EaO4LPOnnYaV6F8o",
-            authDomain: "axnine-ai.firebaseapp.com",
             databaseURL: "https://axnine-ai-default-rtdb.firebaseio.com",
             projectId: "axnine-ai",
-            storageBucket: "axnine-ai.firebasestorage.app",
-            messagingSenderId: "1007945286368",
             appId: "1:1007945286368:web:1f6aea2f0f4e0611794685"
         }; 
 
@@ -166,12 +163,12 @@
         const onlineRef = db.ref('usuarios_online');
 
         let timerInterval;
-        let bloqueioLocal = false; 
+        let isProcessing = false;
+        let serverOffset = 0;
 
-        function getMozTime() {
-            // Usa o tempo do servidor Firebase ou tempo local corrigido
-            return new Date().getTime();
-        }
+        // Sincroniza hora com o servidor
+        db.ref(".info/serverTimeOffset").on("value", snap => { serverOffset = snap.val() || 0; });
+        function getNow() { return Date.now() + serverOffset; }
 
         function showToast(msg) {
             const t = document.getElementById("toast");
@@ -198,13 +195,13 @@
                 document.getElementById('global-loader').style.display = 'none';
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-content').style.display = 'flex';
-                conectarSincronizacao();
+                ouvirSinais();
             }, 1500);
         }
 
-        function conectarSincronizacao() {
+        function ouvirSinais() {
             onlineRef.on('value', s => { document.getElementById('online-count').innerText = s.numChildren(); });
-
+            
             statsRef.on('value', s => {
                 const d = s.val() || { wins: 0, losses: 0 };
                 document.getElementById('w').innerText = d.wins;
@@ -213,53 +210,60 @@
                 document.getElementById('loss-today').innerText = "-" + d.losses;
             });
 
-            sinalRef.on('value', snapshot => {
-                const data = snapshot.val();
-                const agora = getMozTime();
+            sinalRef.on('value', snap => {
+                const data = snap.val();
+                const agora = getNow();
 
-                // CORREÇÃO CRÍTICA: Se o tempo no banco for maior que 120s ou inválido, reseta.
-                if (!data || agora >= data.expira || (data.expira - agora) > 120000) {
-                    gerarNovoSinalGlobal();
+                if (!data || agora >= data.expira) {
+                    if (!isProcessing) processarNovoSinal();
                 } else {
-                    const restante = Math.floor((data.expira - agora) / 1000);
-                    mostrarSinal(data.valor, data.hora);
-                    iniciarContagem(restante);
+                    isProcessing = false;
+                    atualizarTela(data);
                 }
             });
         }
 
-        function gerarNovoSinalGlobal() {
-            if (bloqueioLocal) return;
-            bloqueioLocal = true;
+        function processarNovoSinal() {
+            isProcessing = true;
+            document.getElementById('signal-data').style.display = 'none';
+            document.getElementById('inner-loader').style.display = 'flex';
+            
+            let count = 5;
+            const pTimer = setInterval(() => {
+                count--;
+                document.getElementById('loader-msg').innerText = "IDENTIFICANDO... " + count + "s";
+                document.getElementById('timer-text').innerText = "GERANDO SINAL...";
+                
+                if(count <= 0) {
+                    clearInterval(pTimer);
+                    gerarSinalFinal();
+                }
+            }, 1000);
+        }
 
-            const agoraMS = getMozTime();
-            const d = new Date(agoraMS);
-            const h = d.getHours().toString().padStart(2,'0') + ":" + 
-                    d.getMinutes().toString().padStart(2,'0');
+        function gerarSinalFinal() {
+            const agora = getNow();
+            const d = new Date(agora);
+            const h = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+            const v = (Math.random() * (2.8 - 1.4) + 1.4).toFixed(2);
             
-            const prob = Math.random();
-            let v = prob < 0.75 ? (Math.random() * (2.40 - 1.60) + 1.60).toFixed(2) : (Math.random() * (4.20 - 2.50) + 2.50).toFixed(2);
-            
-            const novoSinal = {
+            sinalRef.set({
                 valor: v,
                 hora: h,
-                expira: agoraMS + 120000 // Trava em exatos 120 segundos
-            };
-
-            sinalRef.set(novoSinal).finally(() => {
-                setTimeout(() => { bloqueioLocal = false; }, 3000);
+                expira: agora + 120000 
             });
         }
 
-        function mostrarSinal(val, hora) {
+        function atualizarTela(data) {
             document.getElementById('inner-loader').style.display = 'none';
             document.getElementById('signal-data').style.display = 'block';
-            document.getElementById('mult').innerText = val + "X";
-            document.getElementById('time').innerText = "ENTRADA: " + hora;
+            document.getElementById('mult').innerText = data.valor + "X";
+            document.getElementById('time').innerText = "ENTRADA: " + data.hora;
             
             const box = document.getElementById('border-box');
             const prot = document.getElementById('prot-color');
-            if (parseFloat(val) < 2.0) {
+            
+            if (parseFloat(data.valor) < 2.0) {
                 box.className = "signal-container blue-mode";
                 prot.innerText = "AZUL";
                 prot.style.color = "var(--blue)";
@@ -268,20 +272,21 @@
                 prot.innerText = "ROXA";
                 prot.style.color = "var(--purple)";
             }
+
+            iniciarContagem(data.expira);
         }
 
-        function iniciarContagem(segundos) {
+        function iniciarContagem(expira) {
             clearInterval(timerInterval);
-            let tempo = segundos > 120 ? 120 : segundos; // Garante o limite visual de 120
             timerInterval = setInterval(() => {
-                tempo--;
-                const txt = document.getElementById('timer-text');
-                if(txt) txt.innerText = "PRÓXIMO SINAL EM: " + (tempo > 0 ? tempo : 0) + "s";
+                const agora = getNow();
+                const restante = Math.max(0, Math.floor((expira - agora) / 1000));
                 
-                if (tempo <= 0) {
+                document.getElementById('timer-text').innerText = "PRÓXIMO SINAL EM: " + restante + "s";
+
+                if (restante <= 0) {
                     clearInterval(timerInterval);
-                    document.getElementById('signal-data').style.display = 'none';
-                    document.getElementById('inner-loader').style.display = 'flex';
+                    if (!isProcessing) processarNovoSinal();
                 }
             }, 1000);
         }
