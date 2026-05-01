@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVIATOR AI | SISTEMA PROFISSIONAL</title>
+    <title>AXNINE AI | SISTEMA PROFISSIONAL</title>
     <style>
         :root { --bg: #0d0d0d; --p: #ff4500; --blue: #3498db; --purple: #9b59b6; --green: #00ff88; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
@@ -124,7 +124,7 @@
 
             <div class="info-row">
                 <div class="info-box"><span class="info-label">PROTEÇÃO</span><span id="prot-color" style="font-weight:900">---</span></div>
-                <div class="info-box"><span class="info-label">ASSERTIVIDADE</span><span id="assert-val" style="font-weight:900">94%</span></div>
+                <div class="info-box"><span class="info-label">ASSERTIVIDADE</span><span style="font-weight:900">94%</span></div>
             </div> 
 
             <div class="btn-group">
@@ -175,6 +175,7 @@
             setTimeout(() => { t.className = ""; }, 3000);
         }
 
+        // --- SISTEMA DE NOTIFICAÇÕES ---
         function enviarNotificacao(titulo, corpo) {
             if ("Notification" in window && Notification.permission === "granted") {
                 const notify = new Notification(titulo, {
@@ -211,6 +212,7 @@
             pRef.set(true);
             pRef.onDisconnect().remove(); 
 
+            // Pedir permissão ao entrar
             if ("Notification" in window) {
                 Notification.requestPermission();
             }
@@ -271,22 +273,14 @@
 
         function gerarSinalFinal() {
             const agora = getNow();
-            
-            // Lógica para horário +1 minuto
-            const dataFutura = new Date(agora + 60000);
-            const h = dataFutura.getHours().toString().padStart(2,'0') + ":" + dataFutura.getMinutes().toString().padStart(2,'0');
-            
-            // Valor do multiplicador
+            const d = new Date(agora);
+            const h = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
             const v = (Math.random() * (2.8 - 1.4) + 1.4).toFixed(2);
-            
-            // Assertividade dinâmica entre 85 e 95
-            const assertividade = Math.floor(Math.random() * (95 - 85 + 1)) + 85;
             
             sinalRef.set({
                 valor: v,
                 hora: h,
-                assert: assertividade,
-                expira: agora + 90000 
+                expira: agora + 120000 
             });
         }
 
@@ -295,8 +289,8 @@
             document.getElementById('signal-data').style.display = 'block';
             document.getElementById('mult').innerText = data.valor + "X";
             document.getElementById('time').innerText = "ENTRADA: " + data.hora;
-            document.getElementById('assert-val').innerText = (data.assert || 94) + "%";
             
+            // Notificar novo sinal
             if (ultimoSinalId !== data.expira) {
                 enviarNotificacao("🚀 NOVO SINAL AVIATOR", `SAIR EM: ${data.valor}X | ENTRADA: ${data.hora}`);
                 ultimoSinalId = data.expira;
