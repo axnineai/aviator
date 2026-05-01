@@ -74,21 +74,21 @@
 
     <div id="global-loader">
         <div class="spinner-box"></div>
-        <div style="color:white; margin-top:10px; font-size: 12px; font-weight: 900;">AUTENTICANDO...</div>
+        <div style="color:white; margin-top:10px; font-size: 12px; font-weight: 900;">CONECTANDO...</div>
     </div> 
 
     <div id="login-overlay">
         <div class="login-card">
             <h2 style="color:var(--p)">AXNINE AI</h2>
             <div class="input-group">
-                <label>Seu Nome (Máx 12)</label>
-                <input type="text" id="user-name" placeholder="Ex: João" maxlength="12">
+                <label>Nome de Usuário</label>
+                <input type="text" id="user-name" placeholder="Ex: Top Games" maxlength="12">
             </div>
             <div class="input-group">
-                <label>WhatsApp (9 dígitos)</label>
+                <label>Número WhatsApp</label>
                 <input type="tel" id="user-phone" placeholder="84XXXXXXX" maxlength="9">
             </div>
-            <button class="btn-access" onclick="acessarSistema()">Entrar no Painel</button>
+            <button class="btn-access" onclick="acessarSistema()">Acessar Painel VIP</button>
         </div>
     </div> 
 
@@ -131,7 +131,7 @@
                 <button class="btn-win" onclick="votar('win')">VITÓRIA ✅</button>
                 <button class="btn-loss" onclick="votar('loss')">DERROTA ❌</button>
             </div>
-            <div id="timer-text" style="font-size:11px; color:var(--p); margin-bottom: 15px; font-weight: 800;">AGUARDANDO...</div> 
+            <div id="timer-text" style="font-size:11px; color:var(--p); margin-bottom: 15px; font-weight: 800;">AGUARDANDO SERVIDOR...</div> 
 
             <div class="stats-footer">
                 <table class="stats-table">
@@ -144,15 +144,17 @@
         </div>
     </div> 
 
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
 
     <script>
+        // Configuração atualizada com base no console axnine-45d25
         const firebaseConfig = {
             apiKey: "AIzaSyA3_1btxboCFxCcCJ4EaO4LPOnnYaV6F8o",
-            databaseURL: "https://axnine-45d25-default-rtdb.firebaseio.com", //
-            projectId: "axnine-45d25", //
-            appId: "1:1007945286368:web:1f6aea2f0f4e0611794685"
+            databaseURL: "https://axnine-45d25-default-rtdb.firebaseio.com",
+            projectId: "axnine-45d25",
+            appId: "1:714660717180:web:86e2467d3b376c6c64188b"
         }; 
 
         firebase.initializeApp(firebaseConfig);
@@ -175,32 +177,11 @@
             setTimeout(() => { t.className = ""; }, 3000);
         }
 
-        function enviarNotificacao(titulo, corpo) {
-            if ("Notification" in window && Notification.permission === "granted") {
-                const notify = new Notification(titulo, {
-                    body: corpo,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/732/732200.png'
-                });
-                notify.onclick = function() { window.focus(); this.close(); };
-            }
-        }
-
-        function verificarLembreteRecorrente() {
-            const CINCO_HORAS = 5 * 60 * 60 * 1000;
-            const agora = Date.now();
-            const ultimoLembrete = localStorage.getItem('ultimo_acesso_axnine');
-
-            if (!ultimoLembrete || (agora - ultimoLembrete) > CINCO_HORAS) {
-                enviarNotificacao("⏰ HORA DE LUCRAR!", "Já faz 5 horas desde sua última análise. Venha conferir os novos sinais!");
-                localStorage.setItem('ultimo_acesso_axnine', agora);
-            }
-        }
-
         async function acessarSistema() {
             const nome = document.getElementById('user-name').value.trim();
             const fone = document.getElementById('user-phone').value.trim();
 
-            if (!/^[A-Za-zÀ-ÿ\s]{3,12}$/.test(nome) || !/^8[2-7]\d{7}$/.test(fone)) {
+            if (nome.length < 3 || !/^8[2-7]\d{7}$/.test(fone)) {
                 showToast("DADOS INVÁLIDOS!");
                 return;
             }
@@ -211,18 +192,10 @@
             pRef.set(true);
             pRef.onDisconnect().remove(); 
 
-            if ("Notification" in window) {
-                Notification.requestPermission();
-            }
-
             setTimeout(() => {
                 document.getElementById('global-loader').style.display = 'none';
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-content').style.display = 'flex';
-                
-                verificarLembreteRecorrente();
-                setInterval(verificarLembreteRecorrente, 60000);
-                
                 ouvirSinais();
             }, 1500);
         }
@@ -260,7 +233,6 @@
             const pTimer = setInterval(() => {
                 count--;
                 document.getElementById('loader-msg').innerText = "IDENTIFICANDO... " + count + "s";
-                document.getElementById('timer-text').innerText = "GERANDO SINAL...";
                 
                 if(count <= 0) {
                     clearInterval(pTimer);
@@ -273,13 +245,18 @@
             const agora = getNow();
             const dataFutura = new Date(agora + 60000);
             const h = dataFutura.getHours().toString().padStart(2,'0') + ":" + dataFutura.getMinutes().toString().padStart(2,'0');
-            const v = (Math.random() * (2.8 - 1.4) + 1.4).toFixed(2);
-            const assertividade = Math.floor(Math.random() * (95 - 85 + 1)) + 85;
             
+            // Lógica de sorteio para variedade
+            const random = Math.random();
+            let v;
+            if (random > 0.8) v = (Math.random() * (4.5 - 3.0) + 3.0).toFixed(2); // Roxo alto
+            else if (random > 0.5) v = (Math.random() * (2.9 - 2.0) + 2.0).toFixed(2); // Roxo baixo
+            else v = (Math.random() * (1.9 - 1.3) + 1.3).toFixed(2); // Azul
+
             sinalRef.set({
                 valor: v,
                 hora: h,
-                assert: assertividade,
+                assert: Math.floor(Math.random() * 6) + 90,
                 expira: agora + 90000 
             });
         }
@@ -289,13 +266,8 @@
             document.getElementById('signal-data').style.display = 'block';
             document.getElementById('mult').innerText = data.valor + "X";
             document.getElementById('time').innerText = "ENTRADA: " + data.hora;
-            document.getElementById('assert-val').innerText = (data.assert || 94) + "%";
+            document.getElementById('assert-val').innerText = data.assert + "%";
             
-            if (ultimoSinalId !== data.expira) {
-                enviarNotificacao("🚀 NOVO SINAL AVIATOR", `SAIR EM: ${data.valor}X | ENTRADA: ${data.hora}`);
-                ultimoSinalId = data.expira;
-            }
-
             const box = document.getElementById('border-box');
             const prot = document.getElementById('prot-color');
             
@@ -317,7 +289,6 @@
             timerInterval = setInterval(() => {
                 const agora = getNow();
                 const restante = Math.max(0, Math.floor((expira - agora) / 1000));
-                
                 document.getElementById('timer-text').innerText = "PRÓXIMO SINAL EM: " + restante + "s";
 
                 if (restante <= 0) {
@@ -333,7 +304,7 @@
                 tipo === 'win' ? a.wins++ : a.losses++;
                 return a;
             });
-            showToast("VOTO COMPUTADO!");
+            showToast("RESULTADO COMPUTADO!");
         }
 
         function irParaBanca() {
@@ -342,7 +313,7 @@
             setTimeout(() => {
                 btn.classList.remove('btn-loading');
                 window.open("https://media1.placard.co.mz/redirect.aspx?pid=2183&bid=1690", "_blank");
-            }, 2000);
+            }, 1500);
         }
     </script>
 </body>
