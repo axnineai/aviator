@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AXNINE AI | SISTEMA DE SINAIS PRO</title>
     <style>
-        /* Manter todo o seu CSS anterior aqui igual */
         :root { --bg: #0d0d0d; --p: #ff4500; --blue: #3498db; --purple: #9b59b6; --green: #00ff88; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
         #toast { visibility: hidden; min-width: 280px; background-color: var(--p); color: #fff; text-align: center; border-radius: 12px; padding: 15px; position: fixed; z-index: 1001; top: 30px; font-size: 12px; font-weight: 800; text-transform: uppercase; transition: 0.5s; opacity: 0; }
@@ -80,7 +79,6 @@
     </div> 
 
     <div id="main-content">
-        <!-- O resto do seu HTML permanece idêntico aqui -->
         <div class="active-users">● <span id="online-count">0</span> Ativo</div> 
         <div class="scoreboard">
             <div style="text-align:center"><span style="font-size:9px">ACERTO HOJE</span><br><span id="w" style="color:var(--green); font-weight:900">0</span></div>
@@ -129,6 +127,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
 
     <script>
+        // URL DO SEU GOOGLE SHEETS
+        const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbyXhSdR5OMeCgcNg4ljsYY81FkZJo7twt1VpPAOUVNgjg7xH4RahQscgAm-HN_9sh5_Dw/exec";
+
         const firebaseConfig = {
             apiKey: "AIzaSyA3_1btxboCFxCcCJ4EaO4LPOnnYaV6F8o",
             databaseURL: "https://axnine-45d25-default-rtdb.firebaseio.com",
@@ -156,32 +157,12 @@
             setTimeout(() => { t.className = ""; }, 4000);
         }
 
-        // --- LÓGICA DE INSISTÊNCIA NAS NOTIFICAÇÕES ---
         function verificarPermissaoNotificacao() {
             if (!("Notification" in window)) return;
-
             if (Notification.permission === "default") {
-                // Primeira tentativa
                 Notification.requestPermission();
             } else if (Notification.permission === "denied") {
-                // Se ele recusou, avisamos via Toast
                 showToast("ATIVE AS NOTIFICAÇÕES PARA RECEBER OS SINAIS!");
-            }
-        }
-
-        // Tentar pedir a cada 30 segundos se não estiver autorizado
-        setInterval(() => {
-            if ("Notification" in window && Notification.permission !== "granted") {
-                verificarPermissaoNotificacao();
-            }
-        }, 30000); // 30 segundos
-
-        function enviarNotificacaoPush(titulo, corpo) {
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(titulo, {
-                    body: corpo,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/732/732200.png'
-                });
             }
         }
 
@@ -194,10 +175,24 @@
                 return;
             }
 
-            // Pedido inicial ao clicar no botão
             verificarPermissaoNotificacao();
-            
             document.getElementById('global-loader').style.display = 'flex';
+
+            // --- ENVIO PARA GOOGLE SHEETS ---
+            try {
+                await fetch(URL_GOOGLE_SHEETS, {
+                    method: "POST", 
+                    mode: "no-cors",
+                    body: JSON.stringify({ 
+                        nome: nome, 
+                        telefone: fone, 
+                        data: new Date().toLocaleString("pt-MZ", {timeZone: "Africa/Maputo"}) 
+                    })
+                });
+            } catch(e) {
+                console.log("Erro sheets:", e);
+            }
+
             const pRef = onlineRef.push();
             pRef.set(true);
             pRef.onDisconnect().remove(); 
@@ -265,7 +260,12 @@
             document.getElementById('assert-val').innerText = data.assert + "%";
             
             if (ultimoSinalId !== data.expira) {
-                enviarNotificacaoPush("🚀 NOVO SINAL AXNINE", `SAIR EM: ${data.valor}X | HORA: ${data.hora}`);
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("🚀 NOVO SINAL AXNINE", {
+                        body: `SAIR EM: ${data.valor}X | HORA: ${data.hora}`,
+                        icon: 'https://cdn-icons-png.flaticon.com/512/732/732200.png'
+                    });
+                }
                 ultimoSinalId = data.expira;
             }
 
