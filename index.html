@@ -42,13 +42,11 @@
         .info-label { font-size: 8px; color: #aaa; font-weight: 900; display: block; margin-bottom: 4px; }
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
         .btn-win { flex: 1; padding: 15px; border-radius: 12px; background: var(--green); border: none; font-weight: 900; color: #000; cursor: pointer; }
-        .btn-loss { flex: 1; padding: 15px; border-radius: 12px; background: var(--p); border: none; color: white; font-weight: 900; cursor: pointer; } 
         .stats-footer { width: 100%; margin-top: 25px; padding-top: 20px; border-top: 1px solid #222; }
         .stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .stats-table th { font-size: 8px; color: #555; text-transform: uppercase; padding: 5px; }
         .stats-table td { background: #111; border: 2px solid var(--bg); padding: 12px 5px; border-radius: 10px; text-align: center; }
         .stat-win { font-size: 14px; font-weight: 900; color: var(--green); }
-        .stat-loss { font-size: 14px; font-weight: 900; color: var(--p); }
         .period-label { font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase; } 
         .tentativas-badge { background: #222; padding: 6px 15px; border-radius: 50px; font-size: 11px; font-weight: 900; color: #fff; border: 1px solid #333; margin-top: 5px; display: inline-block; }
         .instrucoes { font-size: 10px; color: #666; margin-top: 8px; line-height: 1.4; padding: 0 15px; }
@@ -82,7 +80,6 @@
         <div class="active-users">● <span id="online-count">0</span> Ativo</div> 
         <div class="scoreboard">
             <div style="text-align:center"><span style="font-size:9px">ACERTO HOJE</span><br><span id="w" style="color:var(--green); font-weight:900">0</span></div>
-            <div style="text-align:center"><span style="font-size:9px">ERRADO HOJE</span><br><span id="l" style="color:var(--p); font-weight:900">0</span></div>
         </div> 
         <div class="card">
             <h3 style="color:var(--p); margin: 5px 0 15px 0; font-size: 16px;">SISTEMA DE SINAIS VIP AVIATOR</h3>
@@ -108,26 +105,23 @@
             </div> 
             <div class="btn-group">
                 <button class="btn-win" onclick="votar('win')">ACERTOU ✅</button>
-                <button class="btn-loss" onclick="votar('loss')">ERROU ❌</button>
             </div>
             <div id="timer-text" style="font-size:11px; color:var(--p); margin-bottom: 15px; font-weight: 800;">AGUARDANDO SERVIDOR...</div> 
             <div class="stats-footer">
                 <table class="stats-table">
-                    <tr><th colspan="3">RELATÓRIO DE SINAIS</th></tr>
-                    <tr><td class="period-label">Hoje</td><td class="stat-win" id="win-today">+0</td><td class="stat-loss" id="loss-today">-0</td></tr>
-                    <tr><td class="period-label">Semana</td><td class="stat-win" id="win-week">+0</td><td class="stat-loss" id="loss-week">-0</td></tr>
-                    <tr><td class="period-label">Mensal</td><td class="stat-win" id="win-month">+0</td><td class="stat-loss" id="loss-month">-0</td></tr>
+                    <tr><th colspan="2">RELATÓRIO DE SINAIS</th></tr>
+                    <tr><td class="period-label">Hoje</td><td class="stat-win" id="win-today">+0</td></tr>
+                    <tr><td class="period-label">Semana</td><td class="stat-win" id="win-week">+0</td></tr>
+                    <tr><td class="period-label">Mensal</td><td class="stat-win" id="win-month">+0</td></tr>
                 </table>
             </div>
         </div>
     </div> 
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
 
     <script>
-        // URL DO SEU GOOGLE SHEETS
         const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbyXhSdR5OMeCgcNg4ljsYY81FkZJo7twt1VpPAOUVNgjg7xH4RahQscgAm-HN_9sh5_Dw/exec";
 
         const firebaseConfig = {
@@ -178,7 +172,6 @@
             verificarPermissaoNotificacao();
             document.getElementById('global-loader').style.display = 'flex';
 
-            // --- ENVIO PARA GOOGLE SHEETS ---
             try {
                 await fetch(URL_GOOGLE_SHEETS, {
                     method: "POST", 
@@ -189,9 +182,7 @@
                         data: new Date().toLocaleString("pt-MZ", {timeZone: "Africa/Maputo"}) 
                     })
                 });
-            } catch(e) {
-                console.log("Erro sheets:", e);
-            }
+            } catch(e) { console.log("Erro sheets:", e); }
 
             const pRef = onlineRef.push();
             pRef.set(true);
@@ -211,9 +202,7 @@
             statsRef.on('value', s => {
                 const d = s.val() || { wins: 0, losses: 0 };
                 document.getElementById('w').innerText = d.wins;
-                document.getElementById('l').innerText = d.losses;
                 document.getElementById('win-today').innerText = "+" + d.wins;
-                document.getElementById('loss-today').innerText = "-" + d.losses;
             });
 
             sinalRef.on('value', snap => {
@@ -248,7 +237,6 @@
             const h = new Date(agora + 60000).getHours().toString().padStart(2,'0') + ":" + new Date(agora + 60000).getMinutes().toString().padStart(2,'0');
             const random = Math.random();
             let v = (random > 0.8) ? (Math.random() * 1.5 + 3).toFixed(2) : (random > 0.5 ? (Math.random() * 0.9 + 2).toFixed(2) : (Math.random() * 0.6 + 1.3).toFixed(2));
-
             sinalRef.set({ valor: v, hora: h, assert: Math.floor(Math.random() * 6) + 90, expira: agora + 90000 });
         }
 
